@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Siniestros</title>
+<style>
+:root{
+  --bg:#f5f5f7; --bg-elev:#ffffff; --bg-sunken:#eceef1;
+  --text:#1d1d1f; --text-soft:#6e6e73; --border:#d2d2d7;
+  --accent:#0071e3; --accent-soft:#e8f1fd;
+  --green:#1fae58; --amber:#c98a05; --red:#e0392b;
+  --shadow:0 2px 10px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --radius:14px; --radius-sm:9px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#101012; --bg-elev:#1c1c1e; --bg-sunken:#0b0b0c;
+  --text:#f5f5f7; --text-soft:#9a9a9e; --border:#2e2e30;
+  --accent:#3b9cff; --accent-soft:#122845;
+  --shadow:0 2px 14px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;transition:background .25s,color .25s;}
+button,input,select,textarea{font-family:inherit;font-size:14px;}
+::selection{background:var(--accent-soft);}
+
+/* ---------- LOGIN ---------- */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{width:100%;max-width:380px;background:var(--bg-elev);border-radius:20px;box-shadow:var(--shadow);padding:40px 32px;text-align:center;}
+.login-card h1{font-size:22px;font-weight:600;margin:0 0 4px;}
+.login-card p{color:var(--text-soft);font-size:14px;margin:0 0 28px;}
+.field{text-align:left;margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select,.field textarea{width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-sunken);color:var(--text);outline:none;transition:border .15s,box-shadow .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:999px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;transition:filter .15s,transform .1s;}
+.btn:hover{filter:brightness(1.08);}
+.btn:active{transform:scale(.97);}
+.btn.secondary{background:var(--bg-sunken);color:var(--text);border:1px solid var(--border);}
+.btn.danger{background:var(--red);}
+.btn.block{width:100%;}
+.btn.ghost{background:transparent;color:var(--accent);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.login-error{color:var(--red);font-size:13px;margin-top:10px;min-height:16px;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;min-height:100vh;}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:rgba(245,245,247,.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+[data-theme="dark"] .topbar{background:rgba(16,16,18,.75);}
+.topbar-left{display:flex;align-items:center;gap:18px;}
+.brand{font-weight:700;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+.tabs{display:flex;gap:2px;background:var(--bg-sunken);padding:3px;border-radius:999px;}
+.tab-btn{border:none;background:transparent;padding:8px 16px;border-radius:999px;cursor:pointer;color:var(--text-soft);font-weight:500;transition:all .15s;}
+.tab-btn.active{background:var(--bg-elev);color:var(--text);box-shadow:var(--shadow);font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-soft);padding:6px 12px;background:var(--bg-sunken);border-radius:999px;}
+.user-chip b{color:var(--text);}
+.icon-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--bg-elev);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.icon-btn:hover{background:var(--bg-sunken);}
+
+.view{display:none;padding:28px 32px 60px;max-width:1200px;margin:0 auto;}
+.view.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.view-header{margin-bottom:22px;}
+.view-header h2{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;}
+.view-header p{color:var(--text-soft);margin:0;font-size:14px;}
+
+.card{background:var(--bg-elev);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.grid2{grid-template-columns:1fr;}}
+
+/* ---------- CASOS LIST ---------- */
+.search-bar{display:flex;gap:10px;margin-bottom:18px;}
+.search-bar input{flex:1;}
+.case-list{display:flex;flex-direction:column;gap:10px;}
+.case-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg-elev);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:14px 18px;cursor:pointer;transition:transform .12s;}
+.case-row:hover{transform:translateY(-1px);}
+.case-main{display:flex;flex-direction:column;gap:2px;}
+.case-main .name{font-weight:600;}
+.case-main .sub{font-size:12.5px;color:var(--text-soft);}
+.status-pill{font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;}
+.status-pill.done{background:#e4f8ec;color:var(--green);}
+[data-theme="dark"] .status-pill.done{background:#0e2a19;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-soft);}
+.empty-state svg{opacity:.4;margin-bottom:12px;}
+
+/* ---------- ROADMAP ---------- */
+.roadmap{display:flex;align-items:flex-start;overflow-x:auto;padding:20px 4px 10px;gap:0;}
+.roadmap-step{display:flex;flex-direction:column;align-items:center;min-width:120px;position:relative;}
+.roadmap-step .line{position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--border);z-index:0;}
+.roadmap-step:first-child .line{display:none;}
+.roadmap-step.done .line{background:var(--green);}
+.node{width:32px;height:32px;border-radius:50%;background:var(--bg-sunken);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;z-index:1;font-size:13px;font-weight:700;color:var(--text-soft);cursor:pointer;transition:all .15s;}
+.roadmap-step.done .node{background:var(--green);border-color:var(--green);color:#fff;}
+.roadmap-step.current .node{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 5px var(--accent-soft);}
+.roadmap-step .label{margin-top:8px;font-size:12px;text-align:center;max-width:110px;color:var(--text-soft);font-weight:500;}
+.roadmap-step.current .label,.roadmap-step.done .label{color:var(--text);font-weight:600;}
+
+.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 24px;margin-top:20px;}
+.detail-item .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-soft);font-weight:600;margin-bottom:3px;}
+.detail-item .v{font-size:14.5px;}
+@media(max-width:640px){.detail-grid{grid-template-columns:1fr;}}
+
+/* ---------- ADMIN ---------- */
+.subtabs{display:flex;gap:8px;margin-bottom:18px;}
+.subtab-btn{border:1px solid var(--border);background:var(--bg-elev);padding:7px 14px;border-radius:999px;cursor:pointer;color:var(--text-soft);font-weight:500;}
+.subtab-btn.active{background:var(--text);color:var(--bg-elev);border-color:var(--text);}
+.table{width:100%;border-collapse:collapse;}
+.table th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--text-soft);padding:8px 10px;border-bottom:1px solid var(--border);}
+.table td{padding:10px;border-bottom:1px solid var(--border);font-size:14px;}
+.table tr:last-child td{border-bottom:none;}
+.badge{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--bg-sunken);color:var(--text-soft);font-weight:600;}
+.badge.admin{background:var(--accent-soft);color:var(--accent);}
+.etapa-row{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-sunken);border-radius:var(--radius-sm);margin-bottom:8px;}
+.etapa-row input{flex:1;}
+.etapa-row .num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.small-btn{background:none;border:none;cursor:pointer;color:var(--text-soft);padding:4px 6px;border-radius:6px;}
+.small-btn:hover{background:var(--border);color:var(--text);}
+
+/* ---------- MODAL ---------- */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--bg-elev);border-radius:20px;box-shadow:var(--shadow);max-width:520px;width:100%;max-height:88vh;overflow-y:auto;padding:28px;}
+.modal h3{margin:0 0 18px;font-size:18px;}
+.modal-close{float:right;cursor:pointer;color:var(--text-soft);font-size:20px;line-height:1;background:none;border:none;}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 22px;border-radius:999px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow);opacity:0;transition:all .25s;z-index:200;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:20px 0;}
+.pin-dots span{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);}
+.pin-dots span.filled{background:var(--accent);border-color:var(--accent);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;}
+.pin-pad button{padding:16px 0;border-radius:12px;border:1px solid var(--border);background:var(--bg-sunken);font-size:18px;font-weight:600;cursor:pointer;color:var(--text);}
+.pin-pad button:hover{background:var(--border);}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Gestión de Siniestros</h1>
+    <p>Iniciá sesión para continuar</p>
+    <div class="field">
+      <label>Usuario</label>
+      <input id="loginUser" type="text" autocomplete="username" placeholder="usuario">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="btn block" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand"><span class="dot"></span> Siniestros</div>
+      <div class="tabs" id="tabsNav"></div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-chip" id="userChip"></span>
+      <button class="icon-btn" onclick="toggleTheme()" title="Modo claro/oscuro">🌓</button>
+      <button class="icon-btn" onclick="logout()" title="Salir">⏻</button>
+    </div>
+  </div>
+
+  <!-- NUEVO SINIESTRO -->
+  <div class="view" id="view-nuevo">
+    <div class="view-header"><h2>Nuevo siniestro</h2><p>Cargá los datos iniciales del caso</p></div>
+    <div class="card" style="max-width:640px;">
+      <div class="grid2">
+        <div class="field"><label>Cliente</label><input id="f_cliente" placeholder="Nombre y apellido"></div>
+        <div class="field"><label>Dominio</label><input id="f_dominio" placeholder="AA123BB" style="text-transform:uppercase"></div>
+        <div class="field"><label>Modelo</label><input id="f_modelo" placeholder="Ej: Amarok 2.0 TDI"></div>
+        <div class="field"><label>Compañía de seguro</label><input id="f_compania" placeholder="Ej: Sancor Seguros"></div>
+        <div class="field"><label>Perito</label><input id="f_perito" placeholder="Nombre del perito"></div>
+        <div class="field"><label>Número de siniestro</label><input id="f_numero" placeholder="N° de siniestro"></div>
+      </div>
+      <div class="field"><label>Detalle del siniestro</label><textarea id="f_detalle" rows="4" placeholder="Descripción del hecho / daños..."></textarea></div>
+      <button class="btn block" onclick="crearSiniestro()">Guardar siniestro</button>
+    </div>
+  </div>
+
+  <!-- TRACKEO -->
+  <div class="view" id="view-trackeo">
+    <div class="view-header"><h2>Trackeo</h2><p>Buscá un cliente y visualizá en qué instancia está el caso</p></div>
+    <div class="search-bar">
+      <input id="trackSearch" placeholder="Buscar por cliente, dominio o N° de siniestro..." oninput="renderTrackeoList()">
+    </div>
+    <div id="trackeoList" class="case-list"></div>
+    <div id="roadmapCard" class="card" style="margin-top:22px;display:none;"></div>
+  </div>
+
+  <!-- MIS CASOS -->
+  <div class="view" id="view-casos">
+    <div class="view-header"><h2 id="casosTitle">Mis casos</h2><p>Todos los siniestros a tu cargo</p></div>
+    <div class="search-bar">
+      <input id="casosSearch" placeholder="Filtrar..." oninput="renderCasosList()">
+    </div>
+    <div id="casosList" class="case-list"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="view" id="view-admin">
+    <div class="view-header"><h2>Administrador</h2><p>Usuarios y etapas del proceso</p></div>
+    <div class="subtabs">
+      <button class="subtab-btn active" data-sub="usuarios" onclick="switchAdminSub('usuarios')">Usuarios</button>
+      <button class="subtab-btn" data-sub="etapas" onclick="switchAdminSub('etapas')">Etapas</button>
+    </div>
+
+    <div id="admin-usuarios">
+      <div class="card" style="margin-bottom:18px;">
+        <h3 style="margin-top:0;font-size:15px;">Crear usuario</h3>
+        <div class="grid2">
+          <div class="field"><label>Usuario</label><input id="u_username" placeholder="usuario"></div>
+          <div class="field"><label>Contraseña</label><input id="u_password" placeholder="contraseña"></div>
+          <div class="field"><label>Nombre completo</label><input id="u_nombre" placeholder="Nombre y apellido"></div>
+          <div class="field"><label>Sucursal</label>
+            <select id="u_sucursal"><option value="DQ">Duarte Quirós (DQ)</option><option value="Sabattini">Sabattini</option></select>
+          </div>
+          <div class="field"><label>Rol</label>
+            <select id="u_rol"><option value="asesor">Asesor</option><option value="admin">Administrador</option></select>
+          </div>
+        </div>
+        <button class="btn" onclick="crearUsuario()">Crear usuario</button>
+      </div>
+      <div class="card">
+        <table class="table" id="usuariosTable"></table>
+      </div>
+    </div>
+
+    <div id="admin-etapas" style="display:none;">
+      <div class="card">
+        <p style="color:var(--text-soft);font-size:13px;margin-top:0;">Definí las etapas del proceso, en el orden en que aparecen en la hoja de ruta del trackeo.</p>
+        <div id="etapasEditor"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <input id="nuevaEtapaInput" placeholder="Nombre de la nueva etapa" style="flex:1;padding:11px 13px;border-radius:9px;border:1px solid var(--border);background:var(--bg-sunken);color:var(--text);">
+          <button class="btn secondary" onclick="agregarEtapa()">+ Agregar etapa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: detalle / editar caso -->
+<div class="modal-overlay" id="caseModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('caseModal')">×</button>
+    <h3>Detalle del siniestro</h3>
+    <div id="caseModalBody"></div>
+  </div>
+</div>
+
+<!-- MODAL: PIN admin -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <button class="modal-close" onclick="closeModal('pinModal')">×</button>
+    <h3>Ingresá tu PIN</h3>
+    <p style="color:var(--text-soft);font-size:13px;margin-top:-10px;">Acceso de administrador</p>
+    <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
+    <div class="pin-pad" id="pinPad"></div>
+    <div class="login-error" id="pinError"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================= CONFIG ======================= */
+const CONFIG = {
+  APPS_SCRIPT_URL: 'PEGAR_ACA_LA_URL_DEL_DEPLOY_DE_APPS_SCRIPT', // ver README
+  APP_TOKEN: 'CAMBIAR_ESTE_TOKEN_POR_UNO_LARGO_Y_UNICO', // debe coincidir con APP_TOKEN de Code.gs
+  SYNC_INTERVAL_MS: 15000
+};
+
+/* ======================= STATE ======================= */
+let STATE = {
+  user: null,
+  data: { usuarios: [], siniestros: [], etapas: [], historial: [] },
+  currentTab: 'nuevo',
+  selectedCaseId: null,
+  pinBuffer: '',
+  pinTarget: null // callback tab name after pin verified
+};
+
+/* ======================= UTIL ======================= */
+function $(id){ return document.getElementById(id); }
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function closeModal(id){ $(id).classList.remove('active'); }
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+}
+function saveLocal(){ localStorage.setItem('siniestros_cache', JSON.stringify(STATE.data)); localStorage.setItem('siniestros_user', JSON.stringify(STATE.user)); }
+function loadLocal(){
+  try{
+    const d = localStorage.getItem('siniestros_cache');
+    if(d) STATE.data = JSON.parse(d);
+    const u = localStorage.getItem('siniestros_user');
+    if(u) STATE.user = JSON.parse(u);
+  }catch(e){}
+}
+
+/* ======================= API ======================= */
+async function apiGet(){
+  const url = new URL(CONFIG.APPS_SCRIPT_URL);
+  url.searchParams.set('token', CONFIG.APP_TOKEN);
+  if (STATE.user){
+    url.searchParams.set('rol', STATE.user.rol);
+    url.searchParams.set('username', STATE.user.username);
+  }
+  const res = await fetch(url.toString());
+  return res.json();
+}
+async function apiPost(payload){
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
+    body: JSON.stringify({ ...payload, token: CONFIG.APP_TOKEN })
+  });
+  return res.json();
+}
+
+async function syncData(silent){
+  try{
+    const r = await apiGet();
+    if (r.ok){
+      STATE.data = r;
+      saveLocal();
+      renderAll();
+    }
+  }catch(e){
+    if(!silent) toast('No se pudo conectar con el servidor');
+  }
+}
+
+/* ======================= LOGIN ======================= */
+async function doLogin(){
+  const username = $('loginUser').value.trim();
+  const password = $('loginPass').value;
+  if(!username || !password){ $('loginError').textContent = 'Completá usuario y contraseña'; return; }
+  $('loginError').textContent = '';
+  try{
+    const r = await apiPost({ action:'login', username, password });
+    if(!r.ok){ $('loginError').textContent = r.error || 'Error de acceso'; return; }
+    STATE.user = r.user;
+    saveLocal();
+    await syncData();
+    enterApp();
+  }catch(e){
+    $('loginError').textContent = 'No se pudo conectar. Revisá la URL de Apps Script en CONFIG.';
+  }
+}
+function logout(){
+  STATE.user = null;
+  localStorage.removeItem('siniestros_user');
+  $('loginScreen').style.display = 'flex';
+  $('app').style.display = 'none';
+  $('loginUser').value = ''; $('loginPass').value = '';
+}
+function enterApp(){
+  $('loginScreen').style.display = 'none';
+  $('app').style.display = 'block';
+  buildTabs();
+  $('userChip').innerHTML = `<b>${STATE.user.nombre}</b> · ${STATE.user.sucursal} · ${STATE.user.rol === 'admin' ? 'Admin' : 'Asesor'}`;
+  switchTab('nuevo');
+  renderAll();
+  setInterval(()=>syncData(true), CONFIG.SYNC_INTERVAL_MS);
+}
+
+/* ======================= TABS ======================= */
+function buildTabs(){
+  const tabs = [
+    {id:'nuevo', label:'Nuevo siniestro'},
+    {id:'trackeo', label:'Trackeo'},
+    {id:'casos', label: STATE.user.rol === 'admin' ? 'Todos los casos' : 'Mis casos'},
+  ];
+  if (STATE.user.rol === 'admin') tabs.push({id:'admin', label:'Administrador'});
+  $('tabsNav').innerHTML = tabs.map(t => `<button class="tab-btn" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</button>`).join('');
+  $('casosTitle').textContent = STATE.user.rol === 'admin' ? 'Todos los casos' : 'Mis casos';
+}
+function switchTab(tab){
+  if (tab === 'admin' && STATE.user.rol === 'admin'){
+    openPin(()=>{ STATE.currentTab='admin'; renderView(); });
+    return;
+  }
+  STATE.currentTab = tab;
+  renderView();
+}
+function renderView(){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab === STATE.currentTab));
+  $('view-' + STATE.currentTab).classList.add('active');
+  if (STATE.currentTab === 'trackeo') renderTrackeoList();
+  if (STATE.currentTab === 'casos') renderCasosList();
+  if (STATE.currentTab === 'admin') renderAdmin();
+}
+
+/* ======================= THEME ======================= */
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next === 'dark' ? 'dark' : '');
+  localStorage.setItem('siniestros_theme', next);
+}
+(function initTheme(){
+  const saved = localStorage.getItem('siniestros_theme');
+  if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+
+/* ======================= NUEVO SINIESTRO ======================= */
+async function crearSiniestro(){
+  const data = {
+    asesor_username: STATE.user.username,
+    asesor_nombre: STATE.user.nombre,
+    sucursal: STATE.user.sucursal,
+    cliente: $('f_cliente').value.trim(),
+    dominio: $('f_dominio').value.trim().toUpperCase(),
+    modelo: $('f_modelo').value.trim(),
+    compania_seguro: $('f_compania').value.trim(),
+    perito: $('f_perito').value.trim(),
+    numero_siniestro: $('f_numero').value.trim(),
+    detalle: $('f_detalle').value.trim(),
+    etapa_actual: STATE.data.etapas[0] ? STATE.data.etapas[0].nombre : 'Orden de trabajo'
+  };
+  if(!data.cliente || !data.dominio){ toast('Completá al menos Cliente y Dominio'); return; }
+  const r = await apiPost({ action:'addSiniestro', data });
+  if (r.ok){
+    toast('Siniestro creado ✓');
+    ['f_cliente','f_dominio','f_modelo','f_compania','f_perito','f_numero','f_detalle'].forEach(id=>$(id).value='');
+    syncData();
+  } else toast(r.error || 'Error al crear el siniestro');
+}
+
+/* ======================= TRACKEO ======================= */
+function visibleSiniestros(){
+  let list = STATE.data.siniestros || [];
+  if (STATE.user.rol !== 'admin'){
+    list = list.filter(s => s.asesor_username === STATE.user.username);
+  }
+  return list;
+}
+function renderTrackeoList(){
+  const q = ($('trackSearch').value || '').toLowerCase();
+  let list = visibleSiniestros();
+  if (q) list = list.filter(s => (s.cliente||'').toLowerCase().includes(q) || (s.dominio||'').toLowerCase().includes(q) || (String(s.numero_siniestro)||'').toLowerCase().includes(q));
+  const cont = $('trackeoList');
+  if (!list.length){ cont.innerHTML = `<div class="empty-state">Sin resultados</div>`; return; }
+  cont.innerHTML = list.map(s => caseRowHTML(s, ()=>showRoadmap(s.id))).join('');
+}
+function showRoadmap(id){
+  const s = STATE.data.siniestros.find(x=>x.id===id);
+  if(!s) return;
+  const etapas = (STATE.data.etapas||[]).slice().sort((a,b)=>a.orden-b.orden);
+  const curIdx = etapas.findIndex(e=>e.nombre === s.etapa_actual);
+  const roadmapHTML = etapas.map((e,i)=>{
+    let cls = '';
+    if (i < curIdx) cls = 'done';
+    else if (i === curIdx) cls = 'current';
+    return `<div class="roadmap-step ${cls}"><div class="line"></div>
+      <div class="node" onclick="avanzarEtapa('${s.id}','${e.nombre.replace(/'/g,"\\'")}')">${i<curIdx?'✓':i+1}</div>
+      <div class="label">${e.nombre}</div></div>`;
+  }).join('');
+  $('roadmapCard').style.display = 'block';
+  $('roadmapCard').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-size:18px;font-weight:700;">${s.cliente}</div>
+        <div style="color:var(--text-soft);font-size:13px;">${s.dominio} · ${s.modelo || '—'} · N° ${s.numero_siniestro || '—'}</div>
+      </div>
+      <span class="status-pill ${s.etapa_actual==='Entregado'?'done':''}">${s.etapa_actual}</span>
+    </div>
+    <div class="roadmap">${roadmapHTML}</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Compañía de seguro</div><div class="v">${s.compania_seguro||'—'}</div></div>
+      <div class="detail-item"><div class="k">Perito</div><div class="v">${s.perito||'—'}</div></div>
+      <div class="detail-item"><div class="k">Asesor</div><div class="v">${s.asesor_nombre||'—'}</div></div>
+      <div class="detail-item"><div class="k">Última actualización</div><div class="v">${fmtDate(s.fecha_ultima_actualizacion)}</div></div>
+      <div class="detail-item" style="grid-column:1/-1;"><div class="k">Detalle</div><div class="v">${s.detalle||'—'}</div></div>
+    </div>
+    <p style="color:var(--text-soft);font-size:12px;margin-top:16px;">Tocá una etapa del recorrido para mover el caso a esa instancia.</p>`;
+}
+async function avanzarEtapa(id, etapa){
+  const r = await apiPost({ action:'cambiarEtapa', id, etapa, usuario: STATE.user.username });
+  if (r.ok){ toast('Etapa actualizada ✓'); await syncData(); showRoadmap(id); }
+  else toast(r.error || 'Error al actualizar etapa');
+}
+
+/* ======================= CASOS ======================= */
+function caseRowHTML(s, onClick){
+  return `<div class="case-row" onclick="(${onClick.toString()})()">
+    <div class="case-main">
+      <div class="name">${s.cliente} <span style="color:var(--text-soft);font-weight:400;">— ${s.dominio}</span></div>
+      <div class="sub">${s.modelo||'—'} · ${s.compania_seguro||'—'} · N° ${s.numero_siniestro||'—'} · ${fmtDate(s.fecha_alta)}</div>
+    </div>
+    <span class="status-pill ${s.etapa_actual==='Entregado'?'done':''}">${s.etapa_actual}</span>
+  </div>`;
+}
+function renderCasosList(){
+  const q = ($('casosSearch').value || '').toLowerCase();
+  let list = visibleSiniestros();
+  if (q) list = list.filter(s => JSON.stringify(s).toLowerCase().includes(q));
+  list = list.slice().sort((a,b)=> new Date(b.fecha_alta) - new Date(a.fecha_alta));
+  const cont = $('casosList');
+  if (!list.length){ cont.innerHTML = `<div class="empty-state">Todavía no hay siniestros cargados</div>`; return; }
+  cont.innerHTML = list.map(s => caseRowHTML(s, ()=>openCaseModal(s.id))).join('');
+}
+function openCaseModal(id){
+  const s = STATE.data.siniestros.find(x=>x.id===id);
+  if(!s) return;
+  $('caseModalBody').innerHTML = `
+    <div class="grid2">
+      <div class="field"><label>Cliente</label><input id="m_cliente" value="${s.cliente||''}"></div>
+      <div class="field"><label>Dominio</label><input id="m_dominio" value="${s.dominio||''}"></div>
+      <div class="field"><label>Modelo</label><input id="m_modelo" value="${s.modelo||''}"></div>
+      <div class="field"><label>Compañía de seguro</label><input id="m_compania" value="${s.compania_seguro||''}"></div>
+      <div class="field"><label>Perito</label><input id="m_perito" value="${s.perito||''}"></div>
+      <div class="field"><label>Número de siniestro</label><input id="m_numero" value="${s.numero_siniestro||''}"></div>
+    </div>
+    <div class="field"><label>Detalle</label><textarea id="m_detalle" rows="3">${s.detalle||''}</textarea></div>
+    <div class="field"><label>Etapa actual</label>
+      <select id="m_etapa">${(STATE.data.etapas||[]).slice().sort((a,b)=>a.orden-b.orden).map(e=>`<option value="${e.nombre}" ${e.nombre===s.etapa_actual?'selected':''}>${e.nombre}</option>`).join('')}</select>
+    </div>
+    <button class="btn block" onclick="guardarCaso('${id}')">Guardar cambios</button>`;
+  $('caseModal').classList.add('active');
+}
+async function guardarCaso(id){
+  const data = {
+    cliente: $('m_cliente').value.trim(),
+    dominio: $('m_dominio').value.trim().toUpperCase(),
+    modelo: $('m_modelo').value.trim(),
+    compania_seguro: $('m_compania').value.trim(),
+    perito: $('m_perito').value.trim(),
+    numero_siniestro: $('m_numero').value.trim(),
+    detalle: $('m_detalle').value.trim(),
+  };
+  const nuevaEtapa = $('m_etapa').value;
+  await apiPost({ action:'updateSiniestro', id, data });
+  const s = STATE.data.siniestros.find(x=>x.id===id);
+  if (s && nuevaEtapa !== s.etapa_actual){
+    await apiPost({ action:'cambiarEtapa', id, etapa: nuevaEtapa, usuario: STATE.user.username });
+  }
+  toast('Cambios guardados ✓');
+  closeModal('caseModal');
+  syncData();
+}
+
+/* ======================= ADMIN ======================= */
+function switchAdminSub(name){
+  document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.sub===name));
+  $('admin-usuarios').style.display = name==='usuarios' ? 'block':'none';
+  $('admin-etapas').style.display = name==='etapas' ? 'block':'none';
+}
+function renderAdmin(){
+  renderUsuariosTable();
+  renderEtapasEditor();
+}
+function renderUsuariosTable(){
+  const rows = (STATE.data.usuarios||[]).filter(u=>u.activo !== false);
+  $('usuariosTable').innerHTML = `
+    <tr><th>Usuario</th><th>Nombre</th><th>Sucursal</th><th>Rol</th><th></th></tr>
+    ${rows.map(u=>`<tr>
+      <td>${u.username}</td><td>${u.nombre}</td><td>${u.sucursal}</td>
+      <td><span class="badge ${u.rol==='admin'?'admin':''}">${u.rol}</span></td>
+      <td style="text-align:right;">${u.username==='admin'?'':`<button class="small-btn" onclick="bajaUsuario('${u.id}')">Dar de baja</button>`}</td>
+    </tr>`).join('')}`;
+}
+async function crearUsuario(){
+  const data = {
+    username: $('u_username').value.trim(),
+    password: $('u_password').value,
+    nombre: $('u_nombre').value.trim(),
+    sucursal: $('u_sucursal').value,
+    rol: $('u_rol').value
+  };
+  if(!data.username || !data.password || !data.nombre){ toast('Completá todos los campos'); return; }
+  const r = await apiPost({ action:'addUsuario', data });
+  if (r.ok){
+    toast('Usuario creado ✓');
+    ['u_username','u_password','u_nombre'].forEach(id=>$(id).value='');
+    syncData();
+  } else toast(r.error || 'Error al crear usuario');
+}
+async function bajaUsuario(id){
+  if(!confirm('¿Dar de baja este usuario?')) return;
+  await apiPost({ action:'deleteUsuario', id });
+  toast('Usuario dado de baja');
+  syncData();
+}
+function renderEtapasEditor(){
+  const etapas = (STATE.data.etapas||[]).slice().sort((a,b)=>a.orden-b.orden);
+  $('etapasEditor').innerHTML = etapas.map((e,i)=>`
+    <div class="etapa-row">
+      <div class="num">${i+1}</div>
+      <input value="${e.nombre}" onchange="renombrarEtapa(${e.orden}, this.value)">
+      <button class="small-btn" onclick="moverEtapa(${e.orden},-1)" ${i===0?'disabled':''}>↑</button>
+      <button class="small-btn" onclick="moverEtapa(${e.orden},1)" ${i===etapas.length-1?'disabled':''}>↓</button>
+      <button class="small-btn" onclick="eliminarEtapa(${e.orden})">🗑</button>
+    </div>`).join('');
+}
+async function agregarEtapa(){
+  const nombre = $('nuevaEtapaInput').value.trim();
+  if(!nombre) return;
+  await apiPost({ action:'addEtapa', nombre });
+  $('nuevaEtapaInput').value = '';
+  toast('Etapa agregada ✓');
+  syncData();
+}
+async function renombrarEtapa(orden, nombre){
+  await apiPost({ action:'updateEtapa', orden, nombre });
+  toast('Etapa renombrada ✓');
+  syncData();
+}
+async function eliminarEtapa(orden){
+  if(!confirm('¿Eliminar esta etapa?')) return;
+  await apiPost({ action:'deleteEtapa', orden });
+  toast('Etapa eliminada');
+  syncData();
+}
+async function moverEtapa(orden, dir){
+  const etapas = (STATE.data.etapas||[]).slice().sort((a,b)=>a.orden-b.orden);
+  const idx = etapas.findIndex(e=>e.orden===orden);
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= etapas.length) return;
+  [etapas[idx], etapas[swapIdx]] = [etapas[swapIdx], etapas[idx]];
+  await apiPost({ action:'reorderEtapas', etapas });
+  syncData();
+}
+
+/* ======================= PIN ADMIN ======================= */
+function openPin(onSuccess){
+  STATE.pinBuffer = '';
+  STATE.pinTarget = onSuccess;
+  $('pinError').textContent = '';
+  updatePinDots();
+  buildPinPad();
+  $('pinModal').classList.add('active');
+}
+function buildPinPad(){
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  $('pinPad').innerHTML = keys.map(k=>{
+    if(k==='') return `<div></div>`;
+    return `<button onclick="pinPress('${k}')">${k}</button>`;
+  }).join('');
+}
+function updatePinDots(){
+  document.querySelectorAll('#pinDots span').forEach((s,i)=> s.classList.toggle('filled', i < STATE.pinBuffer.length));
+}
+async function pinPress(k){
+  if (k==='⌫'){ STATE.pinBuffer = STATE.pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if (STATE.pinBuffer.length >= 4) return;
+  STATE.pinBuffer += k;
+  updatePinDots();
+  if (STATE.pinBuffer.length === 4){
+    const r = await apiPost({ action:'verifyAdminPin', username: STATE.user.username, pin: STATE.pinBuffer });
+    if (r.ok){
+      closeModal('pinModal');
+      if (STATE.pinTarget) STATE.pinTarget();
+    } else {
+      $('pinError').textContent = 'PIN incorrecto';
+      STATE.pinBuffer = '';
+      updatePinDots();
+    }
+  }
+}
+
+/* ======================= RENDER ALL ======================= */
+function renderAll(){
+  if (STATE.currentTab === 'trackeo') renderTrackeoList();
+  if (STATE.currentTab === 'casos') renderCasosList();
+  if (STATE.currentTab === 'admin') renderAdmin();
+}
+
+/* ======================= INIT ======================= */
+window.addEventListener('DOMContentLoaded', ()=>{
+  loadLocal();
+  if (STATE.user){
+    enterApp();
+  }
+});
+$('loginPass') && $('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>
